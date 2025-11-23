@@ -4,4 +4,3 @@
 
 (defn -main [& args]
   (ui/make-browser-ui))
-  ; (println "Hello world!"))

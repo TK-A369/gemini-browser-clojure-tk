@@ -3,7 +3,7 @@
   (:require
     [clojure.core.async :as async]
     clojure.pprint)
-  (:import (javax.swing JFrame JButton JLabel JPanel SwingUtilities BoxLayout)))
+  (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane SwingUtilities BoxLayout)))
 
 (defrecord browser-ui
   [root-frame tabs])
@@ -24,14 +24,15 @@
         [
           root-frame (JFrame/new "Gemini browser")
           panel-tabs (JPanel/new)
+          scroll-pane-tabs (JScrollPane/new panel-tabs)
           panel-content (JPanel/new)
           label-status (JLabel/new "Status: ")
           make-tabs-buttons (fn [tabs-curr]
             (.removeAll panel-tabs)
             (doseq [t tabs-curr] (let
-              [btn (JButton/new (format "Tab %d" (:id t)))]
+              [btn (JButton/new (format "Tab %d" (-> t second :id)))]
               (.addActionListener btn (fn-action-listener [_]
-                (println (format "Changing tab to %d" (:id t)))))
+                (println (format "Changing tab to %d" (-> t second :id)))))
               (.add panel-tabs btn)))
             (let
               [btn (JButton/new "+")]
@@ -54,9 +55,14 @@
             (println "Successfully updated tabs buttons")))))
         (.setLayout root-frame (BoxLayout/new (.getContentPane root-frame) BoxLayout/Y_AXIS))
         (.add root-frame (JLabel/new "Tabs:"))
-        (.add root-frame panel-tabs)
+        (.setLayout panel-tabs (BoxLayout/new panel-tabs BoxLayout/X_AXIS))
+        (.setMaximumSize panel-tabs (java.awt.Dimension/new 100000 80))
+        (.setMaximumSize scroll-pane-tabs (java.awt.Dimension/new 100000 120))
+        (.setHorizontalScrollBarPolicy scroll-pane-tabs javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
+        (.add root-frame scroll-pane-tabs)
         (.add root-frame (JLabel/new "Content:"))
         (.add root-frame panel-content)
+        (.add root-frame label-status)
         (make-tabs-buttons @tabs)
         (.pack root-frame)
         (.setVisible root-frame true)

@@ -1,0 +1,26 @@
+{
+  :paths ["src"]
+  :deps {
+    org.clojure/core.async {:mvn/version "1.8.741"}}
+
+  :aliases {
+    :run {
+      :main-opts [
+        "--main"
+        "gemini-browser-clojure-tk.main"]}
+    :repl/conjure {
+      :extra-deps {
+        nrepl/nrepl {:mvn/version "1.0.0"}
+        cider/cider-nrepl {:mvn/version "0.42.1"}}
+      :main-opts [
+        "--main"
+        "nrepl.cmdline"
+        "--middleware"
+        "[cider.nrepl/cider-middleware]"
+        "--interactive"]}
+    :build {
+      :deps {
+        io.github.clojure/tools.build {
+          :git/tag "v0.10.11"
+          :git/sha "c6c670a4ea82709d7f88aa3a9e35e0be76342417"}}
+      :ns-default build}}}

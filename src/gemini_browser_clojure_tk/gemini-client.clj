@@ -35,6 +35,9 @@
     _ (.startHandshake socket)
 
     out-stream (.getOutputStream socket)
+    _ (.write out-stream (into-array Byte/TYPE (format "%s\r\n" url)))
+    _ (.flush out-stream)
+
     in-stream (.getInputStream socket)
     in-data (.readAllBytes in-stream)
 

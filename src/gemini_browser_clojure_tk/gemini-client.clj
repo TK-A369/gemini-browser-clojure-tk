@@ -41,10 +41,12 @@
     in-stream (.getInputStream socket)
     in-data (.readAllBytes in-stream)
 
-    [resp-header resp-body] (split-with (partial not= \return) in-data)]
-  (println (format "Got response: %s\n%s"
-    (->> resp-header (map char) (apply str))
-    (->> resp-body (map char) (apply str))))))
+    [resp-header resp-body] (split-with (partial not= \return) in-data)
+    resp-header-str (java.lang.String/new
+      (into-array Byte/TYPE resp-header) java.nio.charset.StandardCharsets/UTF_8)
+    resp-body-str (java.lang.String/new
+      (into-array Byte/TYPE resp-body) java.nio.charset.StandardCharsets/UTF_8)]
+  (println (format "Got response: %s\n%s" resp-header-str resp-body-str))))
 
 (defn tab-state-client-watch []
   (fn [watch-key _ _ state-new]))

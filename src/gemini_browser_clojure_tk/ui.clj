@@ -2,7 +2,9 @@
   (:gen-class)
   (:require
     [clojure.core.async :as async]
-    clojure.pprint)
+    clojure.pprint
+    gemini-browser-clojure-tk.gemini-client
+    gemini-browser-clojure-tk.renderer)
   (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField SwingUtilities BoxLayout)))
 
 (defrecord browser-ui
@@ -13,7 +15,7 @@
   [id state])
 
 (defrecord tab-state
-  [url content])
+  [url content-type content])
 
 (defmacro fn-action-listener [args-list & body]
   `(proxy [java.awt.event.ActionListener] []
@@ -53,14 +55,27 @@
                   [this-tab-id (dosync
                     (commute next-tab-id (fn [s] (+ s 1))))]
                   (println (format "Adding new tab %d" this-tab-id))
-                  (send tabs (fn [s] (assoc s this-tab-id (tab/new this-tab-id (agent (tab-state/new "" nil)))))))))
+                  (send tabs (fn [s] (let
+                    [state-agent (agent (tab-state/new "" nil nil))]
+                    ; fetch watch
+                    (add-watch state-agent (format "tab-%d-fetch-watch" this-tab-id)
+                      (gemini-browser-clojure-tk.gemini-client/tab-state-client-watch))
+                    ; renderer watch
+                    (add-watch state-agent (format "tab-%d-render-watch" this-tab-id) (fn [_ state-agent old-state new-state]
+                      (when
+                        (not=
+                          [(:content-type old-state) (:content old-state)]
+                          [(:content-type new-state) (:content new-state)])
+                        (gemini-browser-clojure-tk.renderer/render-plain-text
+                          panel-content (:content new-state)))))
+                    (assoc s this-tab-id (tab/new this-tab-id state-agent))))))))
               (.add panel-tabs btn))
             (.revalidate panel-tabs)
             (.repaint panel-tabs)
             (.revalidate root-frame)
             (.repaint root-frame))]
 
-        (add-watch tabs "main-keys-watch" (fn [_ _ _ tabs-new]
+        (add-watch tabs "main-tabs-watch" (fn [_ _ _ tabs-new]
           (SwingUtilities/invokeLater (fn []
             (println "Tabs changes")
             (clojure.pprint/pprint tabs-new)
@@ -68,12 +83,14 @@
             (println "Successfully updated tabs buttons")))))
 
         ; Layout
-        (.setLayout root-frame (BoxLayout/new (.getContentPane root-frame) BoxLayout/Y_AXIS))
+        (.setLayout root-frame
+          (BoxLayout/new (.getContentPane root-frame) BoxLayout/Y_AXIS))
         (.add root-frame (JLabel/new "Tabs:"))
         (.setLayout panel-tabs (BoxLayout/new panel-tabs BoxLayout/X_AXIS))
         (.setMaximumSize panel-tabs (java.awt.Dimension/new 100000 80))
         (.setMaximumSize scroll-pane-tabs (java.awt.Dimension/new 100000 120))
-        (.setHorizontalScrollBarPolicy scroll-pane-tabs javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
+        (.setHorizontalScrollBarPolicy scroll-pane-tabs
+          javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
         (.add root-frame scroll-pane-tabs)
         (.setLayout panel-url (BoxLayout/new panel-url BoxLayout/X_AXIS))
         (.setMaximumSize panel-url (java.awt.Dimension/new 100000 80))
@@ -85,8 +102,11 @@
               url-text (.getText text-field-url)]
             (when-not (nil? curr-tab)
               (send (:state curr-tab) (fn [s]
-                (println (format "Setting URL of tab %d to %s" (:id curr-tab) url-text))
-                (tab-state/new url-text nil)))))))
+                (println (format "Setting URL of tab %d to %s (was %s)"
+                  (:id curr-tab)
+                  url-text
+                  (:url s)))
+                (tab-state/new url-text nil nil)))))))
         (.add panel-url button-go)
         (.add root-frame panel-url)
         (.add root-frame (JLabel/new "Content:"))

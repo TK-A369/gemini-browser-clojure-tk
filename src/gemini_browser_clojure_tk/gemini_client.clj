@@ -46,7 +46,29 @@
       (into-array Byte/TYPE resp-header) java.nio.charset.StandardCharsets/UTF_8)
     resp-body-str (java.lang.String/new
       (into-array Byte/TYPE resp-body) java.nio.charset.StandardCharsets/UTF_8)]
-  (println (format "Got response: %s\n%s" resp-header-str resp-body-str))))
+  (println (format "Got response: %s\n%s" resp-header-str resp-body-str))
+  {:header resp-header-str :body resp-body}))
+
+(defn parse-response-header [header]
+  {
+    :code (subs header 0 2)
+    :detail (if (> (count header) 3)
+      (subs header 3))})
 
 (defn tab-state-client-watch []
-  (fn [watch-key _ _ state-new]))
+  (fn [_ state-agent old-state new-state]
+    (when (not= (:url old-state) (:url new-state))
+      (let
+        [
+          {resp-header :header resp-body :body} (gemini-request (:url new-state))
+          {status-code :code status-detail :detail} (parse-response-header resp-header)]
+        (send state-agent (fn [s]
+          (cond
+            (<= 10 status-code 19) {
+              :url (:url new-state)
+              :content-type "text/plain"
+              :content (format "Input requested: %s" status-detail)}
+            (<= 20 status-code 29) {
+              :url (:url new-state)
+              :content-type status-detail
+              :content resp-body})))))))

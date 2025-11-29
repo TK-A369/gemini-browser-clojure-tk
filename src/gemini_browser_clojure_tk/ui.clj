@@ -88,7 +88,9 @@
         (.add root-frame (JLabel/new "Tabs:"))
         (.setLayout panel-tabs (BoxLayout/new panel-tabs BoxLayout/X_AXIS))
         (.setMaximumSize panel-tabs (java.awt.Dimension/new 100000 80))
+        (.setMinimumSize panel-tabs (java.awt.Dimension/new 100 80))
         (.setMaximumSize scroll-pane-tabs (java.awt.Dimension/new 100000 120))
+        (.setMinimumSize scroll-pane-tabs (java.awt.Dimension/new 100 120))
         (.setHorizontalScrollBarPolicy scroll-pane-tabs
           javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
         (.add root-frame scroll-pane-tabs)

@@ -8,7 +8,7 @@
 (defn render-plain-text [text-area-content content] (let
   [
     content-str (java.lang.String/new (into-array Byte/TYPE content) java.nio.charset.StandardCharsets/UTF_8)
-    _ (println content-str)
+    ; _ (println content-str)
     str-lines (clojure.string/split content-str #"\r?\n")]
   (println "Rendering...")
   ; (doseq [l str-lines] 

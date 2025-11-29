@@ -89,6 +89,13 @@
             (make-tabs-buttons tabs-new)
             (println "Successfully updated tabs buttons")))))
 
+        (add-watch active-tab-id "active-tab-watch" (fn [_ _ _ active-tab-id-new]
+          (SwingUtilities/invokeLater (fn [] (let
+            [state (deref (:state (get @tabs active-tab-id-new)))]
+            (.setText text-field-url (:url state))
+            (gemini-browser-clojure-tk.renderer/render
+              text-area-content (:content-type state) (:content state)))))))
+
         ; Layout
         (.setLayout root-frame
           (BoxLayout/new (.getContentPane root-frame) BoxLayout/Y_AXIS))

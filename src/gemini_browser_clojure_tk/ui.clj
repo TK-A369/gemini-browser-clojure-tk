@@ -5,7 +5,8 @@
     clojure.pprint
     gemini-browser-clojure-tk.gemini-client
     gemini-browser-clojure-tk.renderer)
-  (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField SwingUtilities BoxLayout)))
+  (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField JTextArea SwingUtilities BoxLayout))
+  (:import (java.awt BorderLayout)))
 
 (defrecord browser-ui
   [root-frame tabs])
@@ -32,11 +33,16 @@
         [
           root-frame (JFrame/new "Gemini browser")
           panel-tabs (JPanel/new)
-          scroll-pane-tabs (JScrollPane/new panel-tabs)
+          scroll-pane-tabs (JScrollPane/new panel-tabs
+            javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_NEVER
+            javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
           panel-url (JPanel/new)
           text-field-url (JTextField/new)
           button-go (JButton/new "Go!")
-          panel-content (JPanel/new)
+          text-area-content (JTextArea/new)
+          scroll-pane-content (JScrollPane/new text-area-content
+            javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_ALWAYS
+            javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_NEVER)
           label-status (JLabel/new "Status: ")
           make-tabs-buttons (fn [tabs-curr]
             (.removeAll panel-tabs)
@@ -66,8 +72,9 @@
                         (not=
                           [(:content-type old-state) (:content old-state)]
                           [(:content-type new-state) (:content new-state)])
-                        (gemini-browser-clojure-tk.renderer/render
-                          panel-content (:content-type new-state) (:content new-state)))))
+                        (SwingUtilities/invokeLater (fn []
+                          (gemini-browser-clojure-tk.renderer/render
+                            text-area-content (:content-type new-state) (:content new-state)))))))
                     (assoc s this-tab-id (tab/new this-tab-id state-agent))))))))
               (.add panel-tabs btn))
             (.revalidate panel-tabs)
@@ -87,12 +94,10 @@
           (BoxLayout/new (.getContentPane root-frame) BoxLayout/Y_AXIS))
         (.add root-frame (JLabel/new "Tabs:"))
         (.setLayout panel-tabs (BoxLayout/new panel-tabs BoxLayout/X_AXIS))
-        (.setMaximumSize panel-tabs (java.awt.Dimension/new 100000 80))
-        (.setMinimumSize panel-tabs (java.awt.Dimension/new 100 80))
+        ; (.setMaximumSize panel-tabs (java.awt.Dimension/new 100000 80))
+        ; (.setMinimumSize panel-tabs (java.awt.Dimension/new 100 80))
         (.setMaximumSize scroll-pane-tabs (java.awt.Dimension/new 100000 120))
         (.setMinimumSize scroll-pane-tabs (java.awt.Dimension/new 100 120))
-        (.setHorizontalScrollBarPolicy scroll-pane-tabs
-          javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_ALWAYS)
         (.add root-frame scroll-pane-tabs)
         (.setLayout panel-url (BoxLayout/new panel-url BoxLayout/X_AXIS))
         (.setMaximumSize panel-url (java.awt.Dimension/new 100000 80))
@@ -114,7 +119,9 @@
         (.add panel-url button-go)
         (.add root-frame panel-url)
         (.add root-frame (JLabel/new "Content:"))
-        (.add root-frame panel-content)
+        (.setLayout text-area-content
+          (BorderLayout/new))
+        (.add root-frame scroll-pane-content)
         (.add root-frame label-status)
         (make-tabs-buttons @tabs)
         (.pack root-frame)

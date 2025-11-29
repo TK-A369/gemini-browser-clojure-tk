@@ -66,8 +66,8 @@
                         (not=
                           [(:content-type old-state) (:content old-state)]
                           [(:content-type new-state) (:content new-state)])
-                        (gemini-browser-clojure-tk.renderer/render-plain-text
-                          panel-content (:content new-state)))))
+                        (gemini-browser-clojure-tk.renderer/render
+                          panel-content (:content-type new-state) (:content new-state)))))
                     (assoc s this-tab-id (tab/new this-tab-id state-agent))))))))
               (.add panel-tabs btn))
             (.revalidate panel-tabs)
@@ -101,6 +101,8 @@
               curr-tab (get @tabs @active-tab-id)
               url-text (.getText text-field-url)]
             (when-not (nil? curr-tab)
+              (send (:state curr-tab) (fn [s]
+                (assoc s :url nil)))
               (send (:state curr-tab) (fn [s]
                 (println (format "Setting URL of tab %d to %s (was %s)"
                   (:id curr-tab)

@@ -4,7 +4,8 @@
     [clojure.core.async :as async]
     clojure.pprint
     gemini-browser-clojure-tk.gemini-client
-    gemini-browser-clojure-tk.renderer)
+    gemini-browser-clojure-tk.renderer
+    gemini-browser-clojure-tk.util)
   (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField JTextArea SwingUtilities BoxLayout Scrollable))
   (:import (java.awt BorderLayout)))
 
@@ -18,10 +19,6 @@
 (defrecord tab-state
   [url content-type content])
 
-(defmacro fn-action-listener [args-list & body]
-  `(proxy [java.awt.event.ActionListener] []
-    ~(concat (list 'actionPerformed args-list) body)))
-
 (defn make-browser-ui []
   (let
     [
@@ -29,6 +26,21 @@
       next-tab-id (ref 0)
       active-tab-id (agent nil)
       root-frame-chan (async/chan 1)
+      go-fn (fn [url]
+        (let
+          [
+            curr-tab (get @tabs @active-tab-id)
+            resolved-url (.toString (.resolve (java.net.URI/new (or (-> curr-tab :state deref :url) "")) url))]
+          (println (format "Resolved URL: %s" resolved-url))
+          (when-not (nil? curr-tab)
+            (send (:state curr-tab) (fn [s]
+              (assoc s :url nil)))
+            (send (:state curr-tab) (fn [s]
+              (println (format "Setting URL of tab %d to %s (was %s)"
+                (:id curr-tab)
+                resolved-url
+                (:url s)))
+              (tab-state/new resolved-url nil nil))))))
       _ (SwingUtilities/invokeAndWait (fn [] (let
         [
           root-frame (JFrame/new "Gemini browser")
@@ -41,7 +53,7 @@
           button-go (JButton/new "Go!")
           ; text-area-content (JTextArea/new)
           panel-content (proxy [JPanel Scrollable] []
-            (getPreferredScrollableViewportSize [] (.getSize this nil))
+            (getPreferredScrollableViewportSize [] (.getPreferredSize this))
             (getScrollableBlockIncrement [visible-rect ori dir] 10)
             (getScrollableTracksViewportHeight [] false)
             (getScrollableTracksViewportWidth [] true)
@@ -56,13 +68,13 @@
               [
                 tab-id (-> t second :id)
                 btn (JButton/new (format "Tab %d" tab-id))]
-              (.addActionListener btn (fn-action-listener [_]
+              (.addActionListener btn (gemini-browser-clojure-tk.util/fn-action-listener [_]
                 (println (format "Changing tab to %d" tab-id))
                 (send active-tab-id (fn [_] tab-id))))
               (.add panel-tabs btn)))
             (let
               [btn (JButton/new "+")]
-              (.addActionListener btn (fn-action-listener [_]
+              (.addActionListener btn (gemini-browser-clojure-tk.util/fn-action-listener [_]
                 (let
                   [this-tab-id (dosync
                     (commute next-tab-id (fn [s] (+ s 1))))]
@@ -80,7 +92,7 @@
                           [(:content-type new-state) (:content new-state)])
                         (SwingUtilities/invokeLater (fn []
                           (gemini-browser-clojure-tk.renderer/render
-                            panel-content (:content-type new-state) (:content new-state)))))))
+                            panel-content go-fn (:content-type new-state) (:content new-state)))))))
                     (assoc s this-tab-id (tab/new this-tab-id state-agent))))))))
               (.add panel-tabs btn))
             (.revalidate panel-tabs)
@@ -100,7 +112,7 @@
             [state (deref (:state (get @tabs active-tab-id-new)))]
             (.setText text-field-url (:url state))
             (gemini-browser-clojure-tk.renderer/render
-              panel-content (:content-type state) (:content state)))))))
+              panel-content go-fn (:content-type state) (:content state)))))))
 
         ; Layout
         (.setLayout root-frame
@@ -115,20 +127,8 @@
         (.setLayout panel-url (BoxLayout/new panel-url BoxLayout/X_AXIS))
         (.setMaximumSize panel-url (java.awt.Dimension/new 100000 80))
         (.add panel-url text-field-url)
-        (.addActionListener button-go (fn-action-listener [_]
-          (let
-            [
-              curr-tab (get @tabs @active-tab-id)
-              url-text (.getText text-field-url)]
-            (when-not (nil? curr-tab)
-              (send (:state curr-tab) (fn [s]
-                (assoc s :url nil)))
-              (send (:state curr-tab) (fn [s]
-                (println (format "Setting URL of tab %d to %s (was %s)"
-                  (:id curr-tab)
-                  url-text
-                  (:url s)))
-                (tab-state/new url-text nil nil)))))))
+        (.addActionListener button-go (gemini-browser-clojure-tk.util/fn-action-listener [_]
+          (go-fn (.getText text-field-url))))
         (.add panel-url button-go)
         (.add root-frame panel-url)
         (.add root-frame (JLabel/new "Content:"))

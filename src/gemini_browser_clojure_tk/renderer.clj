@@ -1,11 +1,12 @@
 (ns gemini-browser-clojure-tk.renderer
   (:gen-class)
   (:require
-    gemini-browser-clojure-tk.gemtext)
+    gemini-browser-clojure-tk.gemtext
+    gemini-browser-clojure-tk.util)
   (:import (javax.swing JTextArea JButton BoxLayout SwingConstants))
   (:import (java.awt BorderLayout Font)))
 
-(defn render-plain-text [panel-content content] (let
+(defn render-plain-text [panel-content go-fn content] (let
   [
     content-str (java.lang.String/new (into-array Byte/TYPE content) java.nio.charset.StandardCharsets/UTF_8)
     ; _ (println content-str)
@@ -26,7 +27,7 @@
   (.revalidate panel-content)
   (.repaint panel-content)))
 
-(defn render-gemtext [panel-content content] (let
+(defn render-gemtext [panel-content go-fn content] (let
   [
     content-str (java.lang.String/new (into-array Byte/TYPE content) java.nio.charset.StandardCharsets/UTF_8)
     parsing-result (gemini-browser-clojure-tk.gemtext/parse-gemtext content-str)]
@@ -51,19 +52,21 @@
         (.add panel-content text-area))
       :link (let
         [btn (JButton/new)]
-        (.setText btn (:content elem))
+        (.setText btn (format "%s (%s)" (:content elem) (:url elem)))
         ; (.setFont btn (Font/new "Courier New" Font/PLAIN 12))
         (.setHorizontalAlignment btn SwingConstants/LEFT)
-        (.setAlignmentX btn 0.0)
+        (.setAlignmentX btn JButton/LEFT_ALIGNMENT)
+        (.addActionListener btn (gemini-browser-clojure-tk.util/fn-action-listener [_]
+          (go-fn (:url elem))))
         (.add panel-content btn))))
   (.setLayout panel-content
     (BoxLayout/new panel-content BoxLayout/Y_AXIS))
   (.revalidate panel-content)
   (.repaint panel-content)))
 
-(defn render [panel-content content-type content]
+(defn render [panel-content go-fn content-type content]
   (cond
-    (or (nil? content-type) (nil? content)) (render-plain-text panel-content "(Empty)")
-    (= content-type "text/plain") (render-plain-text panel-content content)
-    (= content-type "text/gemini") (render-gemtext panel-content content)
-    :else (render-plain-text panel-content content)))
+    (or (nil? content-type) (nil? content)) (render-plain-text panel-content go-fn "(Empty)")
+    (= content-type "text/plain") (render-plain-text panel-content go-fn content)
+    (= content-type "text/gemini") (render-gemtext panel-content go-fn content)
+    :else (render-plain-text panel-content go-fn content)))

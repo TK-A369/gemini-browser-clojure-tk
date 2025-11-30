@@ -28,6 +28,16 @@
                 (= (safe-subs l 0 3) "###") 3
                 (= (safe-subs l 0 2) "##") 2
                 :else 1)}) "")
+        (= (safe-subs l 0 2) "=>")
+          (let
+            [[_ url text] (re-matches #"=>\s*([a-zA-Z0-9:/\-\.\?#=]+)\s*(.*)$" l)]
+            (recur (first lines-rest) (rest lines-rest) false
+              (conj result {
+                :type :link
+                :content (if (> (count text) 0)
+                  text
+                  url)
+                :url url}) ""))
         :else
           (recur (first lines-rest) (rest lines-rest) false
             (conj result {:type :text :content l}) "")))))

@@ -2,7 +2,7 @@
   (:gen-class)
   (:require
     gemini-browser-clojure-tk.gemtext)
-  (:import (javax.swing JTextArea BoxLayout))
+  (:import (javax.swing JTextArea JButton BoxLayout SwingConstants))
   (:import (java.awt BorderLayout Font)))
 
 (defn render-plain-text [panel-content content] (let
@@ -43,7 +43,19 @@
         [text-area (JTextArea/new)]
         (.setText text-area (:content elem))
         (.setFont text-area (Font/new "Times New Roman" Font/BOLD 32))
-        (.add panel-content text-area))))
+        (.add panel-content text-area))
+      :preformatted (let
+        [text-area (JTextArea/new)]
+        (.setText text-area (:content elem))
+        (.setFont text-area (Font/new "Courier New" Font/PLAIN 12))
+        (.add panel-content text-area))
+      :link (let
+        [btn (JButton/new)]
+        (.setText btn (:content elem))
+        ; (.setFont btn (Font/new "Courier New" Font/PLAIN 12))
+        (.setHorizontalAlignment btn SwingConstants/LEFT)
+        (.setAlignmentX btn 0.0)
+        (.add panel-content btn))))
   (.setLayout panel-content
     (BoxLayout/new panel-content BoxLayout/Y_AXIS))
   (.revalidate panel-content)

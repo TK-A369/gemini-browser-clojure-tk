@@ -3,13 +3,16 @@
   (:require
     clojure.string))
 
+(defn safe-subs [s start end]
+  (subs s (min (count s) start) (min (count s) end)))
+
 (defn parse-gemtext [content]
   (let [lines (clojure.string/split content #"\r?\n")]
     (loop [l (first lines) lines-rest (rest lines) is-preformatted false result [] pref-buf ""]
       (cond
         (nil? l)
           result
-        (= (subs l 0 3) "```")
+        (= (safe-subs l 0 3) "```")
           (if is-preformatted
             (recur (first lines-rest) (rest lines-rest) (not is-preformatted)
               (conj result {:type :preformatted :content pref-buf}) "")
@@ -22,8 +25,8 @@
               :type :heading
               :content l
               :level (cond
-                (= (subs l 0 3) "###") 3
-                (= (subs l 0 2) "##") 2
+                (= (safe-subs l 0 3) "###") 3
+                (= (safe-subs l 0 2) "##") 2
                 :else 1)}) "")
         :else
           (recur (first lines-rest) (rest lines-rest) false

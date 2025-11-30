@@ -5,7 +5,7 @@
     clojure.pprint
     gemini-browser-clojure-tk.gemini-client
     gemini-browser-clojure-tk.renderer)
-  (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField JTextArea SwingUtilities BoxLayout))
+  (:import (javax.swing JFrame JButton JLabel JPanel JScrollPane JTextField JTextArea SwingUtilities BoxLayout Scrollable))
   (:import (java.awt BorderLayout)))
 
 (defrecord browser-ui
@@ -39,8 +39,14 @@
           panel-url (JPanel/new)
           text-field-url (JTextField/new)
           button-go (JButton/new "Go!")
-          text-area-content (JTextArea/new)
-          scroll-pane-content (JScrollPane/new text-area-content
+          ; text-area-content (JTextArea/new)
+          panel-content (proxy [JPanel Scrollable] []
+            (getPreferredScrollableViewportSize [] (.getSize this nil))
+            (getScrollableBlockIncrement [visible-rect ori dir] 10)
+            (getScrollableTracksViewportHeight [] false)
+            (getScrollableTracksViewportWidth [] true)
+            (getScrollableUnitIncrement [vis-rect ori dir] 5))
+          scroll-pane-content (JScrollPane/new panel-content
             javax.swing.ScrollPaneConstants/VERTICAL_SCROLLBAR_ALWAYS
             javax.swing.ScrollPaneConstants/HORIZONTAL_SCROLLBAR_NEVER)
           label-status (JLabel/new "Status: ")
@@ -74,7 +80,7 @@
                           [(:content-type new-state) (:content new-state)])
                         (SwingUtilities/invokeLater (fn []
                           (gemini-browser-clojure-tk.renderer/render
-                            text-area-content (:content-type new-state) (:content new-state)))))))
+                            panel-content (:content-type new-state) (:content new-state)))))))
                     (assoc s this-tab-id (tab/new this-tab-id state-agent))))))))
               (.add panel-tabs btn))
             (.revalidate panel-tabs)
@@ -94,7 +100,7 @@
             [state (deref (:state (get @tabs active-tab-id-new)))]
             (.setText text-field-url (:url state))
             (gemini-browser-clojure-tk.renderer/render
-              text-area-content (:content-type state) (:content state)))))))
+              panel-content (:content-type state) (:content state)))))))
 
         ; Layout
         (.setLayout root-frame
@@ -126,8 +132,10 @@
         (.add panel-url button-go)
         (.add root-frame panel-url)
         (.add root-frame (JLabel/new "Content:"))
-        (.setLayout text-area-content
-          (BorderLayout/new))
+        ; (.setLayout text-area-content
+        ;   (BorderLayout/new))
+        (.setLayout panel-content
+          (BoxLayout/new panel-content BoxLayout/Y_AXIS))
         (.add root-frame scroll-pane-content)
         (.add root-frame label-status)
         (make-tabs-buttons @tabs)
